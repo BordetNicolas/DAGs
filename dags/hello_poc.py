@@ -27,4 +27,14 @@ with DAG(
         python_callable=hello
     )
 
-    bash >> python
+    bash_2 = BashOperator(
+        task_id="bash_task_2",
+        bash_command="echo 'Hello depuis Bash 2' && sleep 10"
+    )
+
+    bash_3 = BashOperator(
+        task_id="bash_task_3",
+        bash_command="echo 'Hello depuis Bash 3' && sleep 10"
+    )
+
+    bash >> python >> bash_2 >> bash_3
