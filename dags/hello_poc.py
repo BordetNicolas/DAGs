@@ -1,39 +1,3 @@
-
-
-    Dag
-        poc_simple
-
-00:00:40.383
-
-00:00:20.191
-
-bash_task
-
-python_task
-
-wait_sftp_test_xml
-
-cat_sftp_file
-poc_simple
-Schedule
-Latest Run
-2026-02-11 16:52:29
-Next Run
-Owner
-airflow
-Tags
-Latest Dag Version
-v3
-Overview
-Runs
-Tasks
-Calendar
-Audit Log
-Code
-Details
-Parsed at: 2026-02-11 21:40:12
-Parse Duration: 00:00:00.060
-
 from airflow import DAG
 from airflow.operators.bash import BashOperator
 from airflow.operators.python import PythonOperator
