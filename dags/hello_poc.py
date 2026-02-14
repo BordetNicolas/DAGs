@@ -4,9 +4,11 @@ from airflow.operators.python import PythonOperator
 from datetime import datetime
 import time
 
+
 def hello():
-    print("Hello depuis Python 👋")
+    print("Hello depuis Python")
     time.sleep(10)
+
 
 with DAG(
     dag_id="poc_simple",
@@ -26,4 +28,3 @@ with DAG(
     )
 
     bash >> python
-
