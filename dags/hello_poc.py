@@ -37,4 +37,14 @@ with DAG(
         bash_command="echo 'Hello depuis Bash 3' && sleep 10"
     )
 
-    bash >> python >> bash_2 >> bash_3
+    bash_4 = BashOperator(
+        task_id="bash_task_4",
+        bash_command="echo 'Hello depuis Bash 4' && sleep 10"
+    )
+
+    bash_5 = BashOperator(
+        task_id="bash_task_5",
+        bash_command="echo 'Hello depuis Bash 5' && sleep 10"
+    )
+
+    bash >> python >> [bash_2, bash_4, bash_5] >> bash_3
