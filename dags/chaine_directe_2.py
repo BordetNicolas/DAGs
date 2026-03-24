@@ -58,6 +58,24 @@ def regroup_and_sample(**kwargs):
     }
 
 
+@task
+def extract_enrich_kwargs(counts: dict, **kwargs):
+    """Extrait la liste de kwargs pour le mapping de enrich."""
+    return counts["enrich_kwargs"]
+
+
+@task
+def extract_arch_kwargs(counts: dict, **kwargs):
+    """Extrait la liste de kwargs pour le mapping de arch."""
+    return counts["arch_kwargs"]
+
+
+@task
+def extract_egov_kwargs(counts: dict, **kwargs):
+    """Extrait la liste de kwargs pour le mapping de egov."""
+    return counts["egov_kwargs"]
+
+
 @task(retries=3, retry_delay=timedelta(seconds=15))
 def enrich(index: int):
     """Exécute une instance de enrich.
@@ -155,18 +173,23 @@ with DAG(
     # ── Regroup : détermine les counts et retourne les listes de kwargs ──
     counts = regroup_and_sample()
 
+    # ── Prépare les listes dynamiques via retour standard TaskFlow ──
+    enrich_kwargs_list = extract_enrich_kwargs(counts)
+    arch_kwargs_list = extract_arch_kwargs(counts)
+    egov_kwargs_list = extract_egov_kwargs(counts)
+
     # ── enrich : N instances dynamiques (N déterminé par regroup) ──
-    enrich_results = enrich.expand_kwargs(counts["enrich_kwargs"])
+    enrich_results = enrich.expand_kwargs(enrich_kwargs_list)
 
     # ── imp : N instances, paire par paire avec enrich (via valeur retournée) ──
     # enrich retourne son index → imp_paired reçoit chaque index dans le même ordre
     imp_paired.expand(index=enrich_results)
 
     # ── arch : M instances dynamiques ──
-    arch.expand_kwargs(counts["arch_kwargs"])
+    arch.expand_kwargs(arch_kwargs_list)
 
     # ── egov : P instances dynamiques ──
-    egov.expand_kwargs(counts["egov_kwargs"])
+    egov.expand_kwargs(egov_kwargs_list)
 
     # ══════════════════════════════════════════════
     # DÉPENDANCES
