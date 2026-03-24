@@ -93,7 +93,7 @@ def enrich(index: int):
     return index
 
 
-@task(retries=0)
+@task(retries=2)
 def imp_paired(index: int):
     """Exécute une instance de imp, paire avec l'enrich_i correspondant.
 
@@ -121,7 +121,7 @@ def arch(index: int):
     logger.info(f"[arch_{index}] Archivage terminé avec succès")
 
 
-@task(retries=0)
+@task(retries=2)
 def egov(index: int):
     """Exécute une instance de egov.
 
