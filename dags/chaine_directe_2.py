@@ -183,7 +183,7 @@ with DAG(
 
     # ── imp : N instances, paire par paire avec enrich (via valeur retournée) ──
     # enrich retourne son index → imp_paired reçoit chaque index dans le même ordre
-    imp_paired.expand(index=enrich_results)
+    #imp_paired.expand(index=enrich_results)
 
     # ── arch : M instances dynamiques ──
     arch.expand_kwargs(arch_kwargs_list)
@@ -195,3 +195,4 @@ with DAG(
     # DÉPENDANCES
     # ══════════════════════════════════════════════
     compo >> counts
+    enrich >> imp_paired
