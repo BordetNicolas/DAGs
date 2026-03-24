@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.decorators import task
+from airflow.decorators import task, task_group
 from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta
 import logging
@@ -104,6 +104,14 @@ def imp_paired(index: int):
     logger.info(f"[imp_{index}] Début de l'import (suite de enrich_{index})...")
     time.sleep(2)
     logger.info(f"[imp_{index}] Import terminé avec succès")
+
+
+@task_group(group_id="enrich_imp")
+def enrich_imp_chain(index: int):
+    """Chaîne enrich -> imp pour un index donné."""
+    enrich_task = enrich(index=index)
+    imp_task = imp_paired(index=index)
+    enrich_task >> imp_task
 
 
 @task(retries=2, retry_delay=timedelta(seconds=10))
