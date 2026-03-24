@@ -186,12 +186,9 @@ with DAG(
     arch_kwargs_list = extract_arch_kwargs(counts)
     egov_kwargs_list = extract_egov_kwargs(counts)
 
-    # ── enrich : N instances dynamiques (N déterminé par regroup) ──
-    enrich_results = enrich.expand_kwargs(enrich_kwargs_list)
-
-    # ── imp : N instances, paire par paire avec enrich (via valeur retournée) ──
-    # enrich retourne son index → imp_paired reçoit chaque index dans le même ordre
-    #imp_paired.expand(index=enrich_results)
+    # ── enrich + imp : N chaînes dynamiques paire par paire ──
+    # Chaque imp_i démarre dès la fin de enrich_i (pas d'attente globale)
+    enrich_imp_chain.expand_kwargs(enrich_kwargs_list)
 
     # ── arch : M instances dynamiques ──
     arch.expand_kwargs(arch_kwargs_list)
@@ -203,4 +200,3 @@ with DAG(
     # DÉPENDANCES
     # ══════════════════════════════════════════════
     compo >> counts
-    enrich >> imp_paired
