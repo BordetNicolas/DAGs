@@ -16,39 +16,54 @@ CUSTOM_CODE_REPO_PATHS = [
     "/opt/airflow/plugins",
 ]
 
-# Import du custom operator HelloOperator
-# - En environnement Airflow, le dossier /opt/airflow/... doit exister.
-# - En local (dans ce repo), on fait un fallback sur EmptyOperator uniquement pour
-#   valider la syntaxe du DAG sans lever d'erreur d'import.
-HelloOperator = EmptyOperator
-_selected_repo_path = next((p for p in CUSTOM_CODE_REPO_PATHS if os.path.isdir(p)), None)
-if _selected_repo_path:
-    if _selected_repo_path not in sys.path:
-        sys.path.insert(0, _selected_repo_path)
+def _import_hello_operator():
+    """Importe HelloOperator ou lève une erreur exploitable (pas de fallback)."""
 
-    try:
-        # Cas le plus fréquent: operators/hello_operator.py expose HelloOperator
-        from operators.hello_operator import HelloOperator  # type: ignore
-        logger.info(f"HelloOperator importé depuis 'operators.hello_operator' via {_selected_repo_path}")
-    except Exception as e:
-        logger.info(
-            "Import 'operators.hello_operator' impossible, tentative alternative "
-            f"(repo_path={_selected_repo_path}, err={e!r})"
-        )
+    repo_paths = list(CUSTOM_CODE_REPO_PATHS)
+    path_existence = {p: os.path.isdir(p) for p in repo_paths}
+    import_errors = []
+
+    for repo_path in repo_paths:
+        if not path_existence[repo_path]:
+            continue
+
+        if repo_path not in sys.path:
+            sys.path.insert(0, repo_path)
+
+        try:
+            # Cas le plus fréquent: operators/hello_operator.py expose HelloOperator
+            from operators.hello_operator import HelloOperator  # type: ignore
+
+            logger.info(f"HelloOperator importé depuis 'operators.hello_operator' via {repo_path}")
+            return HelloOperator
+        except Exception as e:
+            import_errors.append(("operators.hello_operator", repo_path, repr(e)))
+
         try:
             # Alternative si HelloOperator est exporté directement depuis operators/
             from operators import HelloOperator  # type: ignore
-            logger.info(f"HelloOperator importé depuis 'operators' via {_selected_repo_path}")
+
+            logger.info(f"HelloOperator importé depuis 'operators' via {repo_path}")
+            return HelloOperator
         except Exception as e2:
-            logger.info(
-                "Import custom HelloOperator impossible, fallback sur EmptyOperator "
-                f"(repo_path={_selected_repo_path}, err={e2!r})"
-            )
-else:
-    logger.info(
-        "Aucun repo custom trouvé (paths testés: "
-        f"{', '.join(CUSTOM_CODE_REPO_PATHS)}). Fallback sur EmptyOperator."
-    )
+            import_errors.append(("operators", repo_path, repr(e2)))
+
+    details_lines = [
+        "Impossible d'importer HelloOperator.",
+        f"Paths testés: {repo_paths}",
+        f"Présence des dossiers: {path_existence}",
+    ]
+    if import_errors:
+        details_lines.append("Erreurs d'import rencontrées:")
+        for module_name, repo_path, err in import_errors:
+            details_lines.append(f"- module={module_name} repo_path={repo_path} err={err}")
+    else:
+        details_lines.append("Aucun des paths testés n'existe dans cet environnement.")
+
+    raise ImportError("\n".join(details_lines))
+
+
+HelloOperator = _import_hello_operator()
 
 
 # ══════════════════════════════════════════════
@@ -79,15 +94,9 @@ with DAG(
 
     hello_operator = HelloOperator(
         task_id="hello_operator",
+        name="monde",
         retries=1,
         retry_delay=timedelta(seconds=10),
-        **(
-            {}
-            if HelloOperator is EmptyOperator
-            else {
-                "name": "monde",
-            }
-        ),
     )
 
     end = EmptyOperator(
