@@ -16,6 +16,23 @@ CUSTOM_CODE_REPO_PATHS = [
     "/opt/airflow/plugins",
 ]
 
+def _safe_listdir(path: str):
+    """Liste un dossier sans faire échouer le parsing."""
+    try:
+        return sorted(os.listdir(path))
+    except Exception as e:
+        return f"<listdir failed: {e!r}>"
+
+
+def _safe_read_text(path: str, max_chars: int = 2000):
+    """Lit un fichier texte sans faire échouer le parsing."""
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            return f.read(max_chars)
+    except Exception as e:
+        return f"<read failed: {e!r}>"
+
+
 def _import_hello_operator():
     """Importe HelloOperator ou lève une erreur exploitable (pas de fallback)."""
 
@@ -53,6 +70,39 @@ def _import_hello_operator():
         f"Paths testés: {repo_paths}",
         f"Présence des dossiers: {path_existence}",
     ]
+
+    # Diagnostics environnement (utile en K8s / container)
+    interesting_env_keys = [
+        "HOSTNAME",  # en K8s: souvent = nom du pod
+        "KUBERNETES_SERVICE_HOST",
+        "KUBERNETES_PORT",
+        "KUBERNETES_POD_NAME",
+        "KUBERNETES_NAMESPACE",
+        "POD_NAME",
+        "POD_NAMESPACE",
+        "AIRFLOW_HOME",
+        "AIRFLOW__CORE__DAGS_FOLDER",
+        "DAGS_FOLDER",
+        "PYTHONPATH",
+    ]
+    env_snapshot = {k: os.environ.get(k) for k in interesting_env_keys if os.environ.get(k) is not None}
+
+    details_lines.extend(
+        [
+            f"cwd: {os.getcwd()}",
+            f"python: {sys.executable}",
+            f"sys.path (top 15): {sys.path[:15]}",
+            f"env (subset): {env_snapshot}",
+            f"/etc/hostname: {_safe_read_text('/etc/hostname').strip()}",
+            f"/proc/1/cgroup (head): {_safe_read_text('/proc/1/cgroup', max_chars=1200)}",
+            f"listdir('/opt'): {_safe_listdir('/opt')}",
+            f"listdir('/opt/airflow'): {_safe_listdir('/opt/airflow')}",
+            f"listdir('/opt/airflow/dags'): {_safe_listdir('/opt/airflow/dags')}",
+            f"listdir('/opt/airflow/dags/repo'): {_safe_listdir('/opt/airflow/dags/repo')}",
+            f"listdir('/opt/airflow/plugins'): {_safe_listdir('/opt/airflow/plugins')}",
+        ]
+    )
+
     if import_errors:
         details_lines.append("Erreurs d'import rencontrées:")
         for module_name, repo_path, err in import_errors:
