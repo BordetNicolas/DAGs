@@ -9,23 +9,45 @@ import sys
 
 logger = logging.getLogger("airflow.task")
 
-CUSTOM_CODE_REPO_PATH = "/opt/airflow/custom_code/repo"
+CUSTOM_CODE_REPO_PATHS = [
+    "/opt/airflow/custom_code/repo",
+    "/opt/airflow/custom_code",
+    "/opt/airflow/plugins",
+]
 
 # Import du custom operator HelloOperator
 # - En environnement Airflow, le dossier /opt/airflow/... doit exister.
 # - En local (dans ce repo), on fait un fallback sur EmptyOperator uniquement pour
 #   valider la syntaxe du DAG sans lever d'erreur d'import.
 HelloOperator = EmptyOperator
-if os.path.isdir(CUSTOM_CODE_REPO_PATH):
-    if CUSTOM_CODE_REPO_PATH not in sys.path:
-        sys.path.insert(0, CUSTOM_CODE_REPO_PATH)
+_selected_repo_path = next((p for p in CUSTOM_CODE_REPO_PATHS if os.path.isdir(p)), None)
+if _selected_repo_path:
+    if _selected_repo_path not in sys.path:
+        sys.path.insert(0, _selected_repo_path)
 
     try:
-        # Cas le plus fréquent: hello_operator.py expose HelloOperator
+        # Cas le plus fréquent: operators/hello_operator.py expose HelloOperator
         from operators.hello_operator import HelloOperator  # type: ignore
-    except Exception:
-        # Alternative si HelloOperator est exporté directement depuis operators/
-        from operators import HelloOperator  # type: ignore
+        logger.info(f"HelloOperator importé depuis 'operators.hello_operator' via {_selected_repo_path}")
+    except Exception as e:
+        logger.info(
+            "Import 'operators.hello_operator' impossible, tentative alternative "
+            f"(repo_path={_selected_repo_path}, err={e!r})"
+        )
+        try:
+            # Alternative si HelloOperator est exporté directement depuis operators/
+            from operators import HelloOperator  # type: ignore
+            logger.info(f"HelloOperator importé depuis 'operators' via {_selected_repo_path}")
+        except Exception as e2:
+            logger.info(
+                "Import custom HelloOperator impossible, fallback sur EmptyOperator "
+                f"(repo_path={_selected_repo_path}, err={e2!r})"
+            )
+else:
+    logger.info(
+        "Aucun repo custom trouvé (paths testés: "
+        f"{', '.join(CUSTOM_CODE_REPO_PATHS)}). Fallback sur EmptyOperator."
+    )
 
 
 # ══════════════════════════════════════════════
