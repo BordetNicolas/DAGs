@@ -78,9 +78,15 @@ with DAG(
 
     hello_operator = HelloOperator(
         task_id="hello_operator",
-        name="monde",
         retries=1,
         retry_delay=timedelta(seconds=10),
+        **(
+            {}
+            if HelloOperator is EmptyOperator
+            else {
+                "name": "monde",
+            }
+        ),
     )
 
     end = EmptyOperator(
